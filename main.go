@@ -41,6 +41,11 @@ func serveHttp(w http.ResponseWriter, r *http.Request) {
 			addFriend(w, r)
 		}
 
+	case "/messages":
+		if r.Method == http.MethodGet {
+			messages(w, r)
+		}
+
 	default:
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
@@ -137,4 +142,23 @@ func addFriend(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
+}
+
+func messages(w http.ResponseWriter, r *http.Request) {
+	authToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[1]
+	user_id, err := ValidateToken(authToken)
+
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var f friend
+	json.NewDecoder(r.Body).Decode(&f)
+	friend_id := f.Id
+
+	message_list := dbGetMessages(user_id, friend_id)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(message_list)
 }

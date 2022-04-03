@@ -11,6 +11,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+const timeLayout = "2006-01-02 15:04:05"
+
 func CheckCredentials(username string, password string) bool {
 	db := OpendbConnection()
 
@@ -46,7 +48,6 @@ func GenerateToken(username string) (map[string]interface{}, error) {
 	}
 
 	authToken := base64.URLEncoding.EncodeToString(randomToken)
-	const timeLayout = "2006-01-02 15:04:05"
 	dt := time.Now()
 	exipiryTime := dt.Add(time.Minute * 60)
 
@@ -104,7 +105,6 @@ func ValidateToken(token string) (int, error) {
 		return 0, errors.New("invalid token")
 	}
 
-	const timeLayout = "2006-01-02 15:04:05"
 	expiry_time, _ := time.Parse(timeLayout, expires_at)
 	current_time, _ := time.Parse(timeLayout, time.Now().Format(timeLayout))
 

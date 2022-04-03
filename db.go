@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"golang.org/x/crypto/bcrypt"
@@ -127,4 +128,57 @@ func dbFriendsList(user_id int) []friend {
 
 	defer db.Close()
 	return friends_list
+}
+
+func dbSendMessage(user_id int, room_id int, text string, friend_id int) {
+	db := OpendbConnection()
+	defer db.Close()
+
+	dt := time.Now().Format(timeLayout)
+
+	db.Query(`INSERT INTO message (user_id, room_id, text, date) 
+		VALUES (?, ?, ?, ?)`,
+		user_id, room_id, text, dt)
+
+}
+
+type message struct {
+	Username string `json:"username"`
+	Text     string `json:"text"`
+	Date     string `json:"date"`
+}
+
+func dbGetMessages(user_id int, friend_id int) []message {
+	db := OpendbConnection()
+	defer db.Close()
+	var messages []message
+
+	rows, err := db.Query(`
+		SELECT m.text, u.username, m.date
+		FROM message m
+		LEFT JOIN user u ON m.user_id = u.id
+		WHERE m.room_id = (
+		    SELECT  room_id FROM participants
+		    WHERE user_id = ? and EXISTS(SELECT * FROM participants WHERE user_id = ?))
+		ORDER BY date ;
+	`, user_id, friend_id)
+
+	if err != nil {
+		log.Print(err)
+		return nil
+	}
+
+	for rows.Next() {
+		var m message
+
+		if err := rows.Scan(&m.Text, &m.Username, &m.Date); err != nil {
+			log.Print(err)
+			return nil
+		}
+		messages = append(messages, m)
+	}
+
+	log.Print(messages)
+
+	return messages
 }
