@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> Register </title>
+<script>
+
+function validateUsername(username){
+    var usernameRegex = /^[a-zA-Z0-9]+$/;
+    var valid = username.match(usernameRegex);
+    if(valid == null){
+        return false;
+    }
+    return true;
+}
+
+function send(){
+    username=document.getElementById("username");
+    password=document.getElementById("password");
+
+    console.log(username, password);
+
+    if(validateUsername(username.value) == false){
+        alert("this username is incorrect");
+        username.value = '';
+        password.value = '';
+        return;
+    }
+
+    var r = new XMLHttpRequest();
+    r.open('POST', '/register', true);
+    r.setRequestHeader('Content-Type', 'application/json');
+    r.send(JSON.stringify({
+        "username": username.value,
+        "password": password.value
+    }));
+
+    username.value = '';
+    password.value = '';
+}
+
+</script>
+
+<style>
+
+</style>
+
+</head>
+
+<body>
+    <div class="register">
+        <input id="username" placeholder="username">
+        <input id="password" placeholder="password" type="password">
+        <button onclick="send()"> register </button>
+    </div>
+</body>
+
+</html>
