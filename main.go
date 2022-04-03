@@ -132,8 +132,8 @@ func addFriend(w http.ResponseWriter, r *http.Request) {
 	var f friend
 	err = json.NewDecoder(r.Body).Decode(&f)
 
-	added := dbAddFriend(user_id, f.Username)
-	if !added {
+	found := dbAddFriend(user_id, f.Username)
+	if !found {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}

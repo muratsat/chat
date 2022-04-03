@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"os"
 
@@ -57,14 +58,38 @@ func dbAddFriend(user_id int, friend_name string) bool {
 		return false
 	}
 
-	db.Query(`
-	INSERT INTO friend (user_id, friend_id)
-	SELECT ?, ?
-	WHERE (NOT EXISTS(SELECT * from friend where user_id = ? and friend_id = ?))
-	`, user_id, friend_id, user_id, friend_id)
-
+	row = db.QueryRow("SELECT EXISTS(SELECT * FROM friend_requests WHERE user_id = ? and friend_id = ?)", friend_id, user_id)
+	exist := false
+	err = row.Scan(&exist)
 	defer db.Close()
-	return true
+
+	if exist {
+		_, err = db.Query(`
+			DELETE FROM friend_requests 
+			WHERE user_id = ? and friend_id = ?;`,
+			friend_id, user_id)
+
+		_, err = db.Query(`INSERT INTO friend (user_id, friend_id) 
+			VALUES (?, ?), (?, ?);`,
+			friend_id, user_id, user_id, friend_id)
+
+		username := ""
+		db.QueryRow("SELECT username FROM user where id = ?", user_id).Scan(&username)
+
+		room_name := fmt.Sprintf("%s, %s", username, friend_name)
+		var room_id int
+		db.Query("INSERT INTO room (name) value (?)", room_name)
+		db.QueryRow("SELECT id FROM room WHERE name = ?", room_name).Scan(&room_id)
+
+		db.Query("INSERT INTO participants (user_id, room_id) VALUES (?, ?), (?, ?);", user_id, room_id, friend_id, room_id)
+
+		return true
+	} else {
+		_, err = db.Query("INSERT INTO friend_requests (user_id, friend_id) VALUES (?, ?);", user_id, friend_id)
+		log.Println(err)
+		return true
+	}
+
 }
 
 type friend struct {
