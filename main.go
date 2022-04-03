@@ -48,14 +48,11 @@ func serveHttp(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// http.HandleFunc("/", serveHttp)
-	// err := http.ListenAndServe(":8080", nil)
-	// if err != nil {
-	// 	log.Fatal("ListenAndServe: ", err)
-	// }
-
-	flist := dbFriendsList(1)
-	log.Println(flist)
+	http.HandleFunc("/", serveHttp)
+	err := http.ListenAndServe(":8080", nil)
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
 }
 
 type auth struct {
