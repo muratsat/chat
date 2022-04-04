@@ -2,9 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
-	"strings"
+	"time"
 )
 
 func serveHttp(w http.ResponseWriter, r *http.Request) {
@@ -12,7 +13,7 @@ func serveHttp(w http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Path {
 	case "/":
-		http.ServeFile(w, r, "home.html")
+		home(w, r)
 		return
 
 	case "/register":
@@ -69,6 +70,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var newAuth auth
 	err := decoder.Decode(&newAuth)
+	log.Print(newAuth)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -77,12 +79,13 @@ func register(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s", newAuth.Username, newAuth.Password)
 
 	if !dbAddUser(newAuth.Username, newAuth.Password) {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("such user already exists"))
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode("such user already exists or invalid username")
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode("succesfully registered")
 }
 
 func login(w http.ResponseWriter, r *http.Request) {
@@ -106,15 +109,30 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	expires, _ := time.Parse(timeLayout, fmt.Sprintf("%s", token["expires_at"]))
+
+	cookie := http.Cookie{
+		Name:    "auth_token",
+		Value:   fmt.Sprintf("%s", token["auth_token"]),
+		Expires: expires,
+	}
+
+	http.SetCookie(w, &cookie)
+
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	enc.Encode(token)
 }
 
 func friends(w http.ResponseWriter, r *http.Request) {
-	authToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[1]
-	user_id, err := ValidateToken(authToken)
+	c, err := r.Cookie("auth_token")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
 
+	authToken := c.Value
+	user_id, err := ValidateToken(authToken)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -127,7 +145,13 @@ func friends(w http.ResponseWriter, r *http.Request) {
 }
 
 func addFriend(w http.ResponseWriter, r *http.Request) {
-	authToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[1]
+	c, err := r.Cookie("auth_token")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	authToken := c.Value
 	user_id, err := ValidateToken(authToken)
 	if err != nil {
 		w.WriteHeader(http.StatusUnauthorized)
@@ -145,7 +169,13 @@ func addFriend(w http.ResponseWriter, r *http.Request) {
 }
 
 func messages(w http.ResponseWriter, r *http.Request) {
-	authToken := strings.Split(r.Header.Get("Authorization"), "Bearer ")[1]
+	c, err := r.Cookie("auth_token")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	authToken := c.Value
 	user_id, err := ValidateToken(authToken)
 
 	if err != nil {
@@ -161,4 +191,24 @@ func messages(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(message_list)
+}
+
+func home(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("auth_token")
+	if err != nil {
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	authToken := c.Value
+	user_id, err := ValidateToken(authToken)
+
+	if err != nil {
+		log.Println("invalid token")
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+
+	http.ServeFile(w, r, "home.html")
+	log.Print(user_id)
 }

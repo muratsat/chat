@@ -17,29 +17,29 @@ function validateUsername(username){
     return true;
 }
 
+
 function send(){
-    username=document.getElementById("username");
-    password=document.getElementById("password");
+    usr=document.getElementById("username");
+    pswd=document.getElementById("password");
 
-    console.log(username, password);
+    (async () => {
+      const rawResponse = await fetch('/login', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({username: usr.value, password: pswd.value})
+      });
+      const content = await rawResponse.json();
+      statusCode = await rawResponse.status;
+      if (statusCode == 200){
+          window.location.replace('/')
+      }
+    })();
 
-    if(validateUsername(username.value) == false){
-        alert("this username is incorrect");
-        username.value = '';
-        password.value = '';
-        return;
-    }
-
-    var r = new XMLHttpRequest();
-    r.open('POST', '/login', true);
-    r.setRequestHeader('Content-Type', 'application/json');
-    r.send(JSON.stringify({
-        "username": username.value,
-        "password": password.value
-    }));
-
-    username.value = '';
-    password.value = '';
+    usr.value = '';
+    pswd.value = '';
 }
 
 </script>
@@ -51,11 +51,16 @@ function send(){
 </head>
 
 <body>
+
+    <h1> Login to chat application </h1>
+
     <div class="login">
         <input id="username" placeholder="username">
         <input id="password" placeholder="password" type="password">
         <button onclick="send()"> login </button>
     </div>
+
+    <p> <a href="/register"> register </a> </p>
 </body>
 
 </html>
