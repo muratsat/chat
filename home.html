@@ -6,7 +6,7 @@
 // var msg = document.getElementById("msg");
 // var log = document.getElementById("log");
 var friend_id = 0;
-var friends = []
+var friends_table = {}
 
 function httpGet(theUrl, body = null) {
     var xmlHttp = new XMLHttpRequest();
@@ -37,7 +37,7 @@ function switchTo(Id){
     if(msg_list != null){
         for(i = 0; i < msg_list.length; i++){
             var item = document.createElement("div")
-            item.innerText = `<${msg_list[i]["username"]}> ${msg_list[i]["text"]}`
+            item.innerText = `[${msg_list[i]["date"]}]<${msg_list[i]["username"]}> ${msg_list[i]["text"]}`
             appendLog(item)
         }
     }
@@ -51,6 +51,10 @@ function UpdateFriendsList(){
     if(f != null){
         friends = f;
         for(i = 0; i < f.length; i++){
+            var index = f[i]["id"]
+            var name = f[i]["username"]
+            // friends[f[i]["id"]] = f[i]["username"]
+            friends_table[index] = name
             var item = document.createElement("button")
             item.setAttribute("id", f[i]["id"])
             item.setAttribute("onclick", `switchTo(${f[i]["id"]})`)
@@ -58,6 +62,45 @@ function UpdateFriendsList(){
             friends_list.appendChild(item)
         }
     }
+}
+
+function UpdateFriendRequests(){
+    f = JSON.parse(httpGet('/friends/requests').response);
+
+    var requests_list = document.getElementById("friends-requests")
+    requests_list.innerHTML = ''
+    if(f != null){
+        friends = f;
+        for(i = 0; i < f.length; i++){
+            var index = f[i]["id"]
+            var name = f[i]["username"]
+            // friends[f[i]["id"]] = f[i]["username"]
+            friends_table[index] = name
+            var item = document.createElement("button")
+            item.setAttribute("id", f[i]["id"])
+            item.setAttribute("onclick", `acceptFriend(${f[i]["id"]})`)
+            item.innerText = f[i]["username"]
+            requests_list.appendChild(item)
+        }
+    }
+}
+
+function acceptFriend(id) {
+    var name = friends_table[id]
+    console.log(name)
+    var body = {"username": name}
+    r = httpPost('/friends/add', body)
+    UpdateFriendRequests()
+    UpdateFriendsList()
+}
+
+function clearCookies(){
+    document.cookie.split(";").forEach(function(c) { document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); });
+}
+
+function logout(){
+    clearCookies()
+    window.location.replace('/login')
 }
 
 function addFriend(){
@@ -77,14 +120,6 @@ function addFriend(){
     serch.value = ''
 }
 
-function appendLog(item) {
-    var log = document.getElementById("log");
-    var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
-    log.appendChild(item);
-    if (doScroll) {
-        log.scrollTop = log.scrollHeight - log.clientHeight;
-    }
-}
 
 function sendMessage(){
     var msg = document.getElementById("msg");
@@ -105,11 +140,19 @@ function appendLog(item) {
 
 var auth_token = document.cookie.replace('auth_token=', '')
 
+window.onclose = function(){
+    // clearCookies()
+}
+
 window.onload = function () {
     UpdateFriendsList()
+    UpdateFriendRequests()
+    self = JSON.parse(httpGet('/userinfo').response)
+    friends_table[self["id"]] = self["username"]
     var conn;
     var msg = document.getElementById("msg");
     var log = document.getElementById("log");
+
 
 
     document.getElementById("form").onsubmit = function () {
@@ -119,7 +162,10 @@ window.onload = function () {
         if (!msg.value) {
             return false;
         }
-        conn.send(msg.value);
+        if(friend_id != 0){
+            var message = {"dest": friend_id, "text": msg.value}
+            conn.send(JSON.stringify(message));
+        }
         msg.value = "";
         return false;
     };
@@ -135,8 +181,11 @@ window.onload = function () {
             var messages = evt.data.split('\n');
             for (var i = 0; i < messages.length; i++) {
                 var item = document.createElement("div");
-                item.innerText = messages[i];
-                appendLog(item);
+                var message = JSON.parse(messages[i])
+                item.innerText = `[${message["date"]}]<${friends_table[message["user_id"]]}> ${message["text"]}`
+                console.log(message)
+                if(message["user_id"] == friend_id || message["dest"] == friend_id)
+                    appendLog(item);
             }
         };
     } else {
@@ -195,6 +244,18 @@ body {
     overflow: auto;
 }
 
+#log{
+    background: white;
+    margin: 0;
+    padding: 0.5em 0.5em 0.5em 0.5em;
+    position: absolute;
+    top: 5em;
+    left: 0.5em;
+    right: 0.5em;
+    bottom: 3em;
+    overflow: auto;
+}
+
 #form {
     padding: 0 0.5em 0 0.5em;
     margin: 0;
@@ -212,20 +273,26 @@ body {
 
 <div class="sidebar" id="friends">
     <h2> Friends </h2>
-    <div class="item" id="friends-list">
-    </div>
+    <div class="item" id="friends-list"> </div>
 
     <h2> Add Friends </h2>
     <input id="find" placeholder="friend's username">
     <button onclick="addFriend()"> Send request </button>
     <div id="friendResponse"></div>
+
+    <h2> Friend Requests</h2>
+    <p>(click on names to add friend)</p>
+    <!-- <div class="item" id="request-list"> -->
+    <div class="item" id="friends-requests"> </div>
+    
+    <button onclick="logout()" style="position:absolute ;bottom: 5em;"> logout </button>
 </div>
 
 <div class="main">
     <div id="messages">
-        <h1 id="header">Choose friend</h1>
         <div id="log">
         </div>
+    <h1 id="header">Choose friend</h1>
     </div>
 
     <form id="form">

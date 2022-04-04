@@ -11,12 +11,19 @@ import (
 var hub = newHub()
 
 func main() {
+	// for i := 0; i < 30; i++ {
+	// 	dbSendMessage(1, fmt.Sprintf("Spam #%d", i), 2)
+	// }
+
+	// return
 	go hub.run()
 
 	http.HandleFunc("/", home)
 	http.HandleFunc("/friends", friends)
 	http.HandleFunc("/friends/add", addFriend)
+	http.HandleFunc("/friends/requests", friendRequests)
 	http.HandleFunc("/messages", messages)
+	http.HandleFunc("/userinfo", userinfo)
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			http.ServeFile(w, r, "register.html")
@@ -151,6 +158,26 @@ func addFriend(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func friendRequests(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("auth_token")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	authToken := c.Value
+	user_id, err := ValidateToken(authToken)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	friends_list := dbFriendRequests(user_id)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(friends_list)
+}
+
 func messages(w http.ResponseWriter, r *http.Request) {
 	c, err := r.Cookie("auth_token")
 	if err != nil {
@@ -174,6 +201,26 @@ func messages(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(message_list)
+}
+
+func userinfo(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("auth_token")
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	authToken := c.Value
+	user_id, err := ValidateToken(authToken)
+
+	var self = friend{Id: user_id}
+
+	db := OpendbConnection()
+	db.QueryRow("SELECT username FROM user WHERE id = ?", user_id).Scan(&self.Username)
+	defer db.Close()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(self)
 }
 
 func home(w http.ResponseWriter, r *http.Request) {

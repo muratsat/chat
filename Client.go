@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -33,18 +34,19 @@ var upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 }
 
-// Client is a middleman between the websocket connection and the hub.
 type Client struct {
+	id   int
 	hub  *Hub
 	conn *websocket.Conn
 	send chan []byte
 }
+type Message struct {
+	User_id   int    `json:"user_id"`
+	Friend_id int    `json:"dest"`
+	Text      string `json:"text"`
+	Date      string `json:"date"`
+}
 
-// readPump pumps messages from the websocket connection to the hub.
-//
-// The application runs readPump in a per-connection goroutine. The application
-// ensures that there is at most one reader on a connection by executing all
-// reads from this goroutine.
 func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
@@ -62,15 +64,18 @@ func (c *Client) readPump() {
 			break
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+
+		log.Printf("< user %d >  %s", c.id, string(message))
+		var msg Message
+		json.Unmarshal([]byte(message), &msg)
+		msg.User_id = c.id
+		log.Print("[read  pump] ", msg)
+		msg.Date = dbSendMessage(msg.User_id, msg.Text, msg.Friend_id)
+		message, err = json.Marshal(msg)
 		c.hub.broadcast <- message
 	}
 }
 
-// writePump pumps messages from the hub to the websocket connection.
-//
-// A goroutine running writePump is started for each connection. The
-// application ensures that there is at most one writer to a connection by
-// executing all writes from this goroutine.
 func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
@@ -91,7 +96,13 @@ func (c *Client) writePump() {
 			if err != nil {
 				return
 			}
-			w.Write(message)
+
+			var msg Message
+			json.Unmarshal([]byte(message), &msg)
+			log.Print("[write pump] ", msg)
+			if msg.User_id == c.id || msg.Friend_id == c.id {
+				w.Write(message)
+			}
 
 			// Add queued chat messages to the current websocket message.
 			n := len(c.send)
@@ -119,8 +130,6 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := &Client{hub: hub, conn: conn, send: make(chan []byte, 256)}
-	client.hub.register <- client
 
 	c, err := r.Cookie("auth_token")
 	if err != nil {
@@ -134,7 +143,10 @@ func serveWs(hub *Hub, w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		return
 	}
-	log.Println(user_id)
+
+	client := &Client{id: user_id, hub: hub, conn: conn, send: make(chan []byte, 256)}
+	client.hub.register <- client
+	log.Printf("user %d connected (token: %s)", user_id, authToken)
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.

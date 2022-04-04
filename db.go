@@ -130,16 +130,22 @@ func dbFriendsList(user_id int) []friend {
 	return friends_list
 }
 
-func dbSendMessage(user_id int, room_id int, text string, friend_id int) {
+func dbSendMessage(user_id int, text string, friend_id int) string {
 	db := OpendbConnection()
 	defer db.Close()
 
 	dt := time.Now().Format(timeLayout)
 
 	db.Query(`INSERT INTO message (user_id, room_id, text, date) 
-		VALUES (?, ?, ?, ?)`,
-		user_id, room_id, text, dt)
+		VALUES 
+		(?, 
+		(SELECT p1.room_id FROM participants p1 
+			LEFT JOIN participants p2 
+			ON p1.room_id = p2.room_id 
+			WHERE p1.user_id = ? and p2.user_id = ?), 
+		?, ?)`, user_id, user_id, friend_id, text, dt)
 
+	return dt
 }
 
 type message struct {
@@ -185,4 +191,34 @@ func dbGetMessages(user_id int, friend_id int) []message {
 	}
 
 	return messages
+}
+
+func dbFriendRequests(user_id int) []friend {
+	var friends_list []friend
+
+	db := OpendbConnection()
+
+	rows, err := db.Query(`
+		SELECT r.user_id, u.username
+		FROM friend_requests r
+		LEFT JOIN user u ON u.id = user_id
+		WHERE r.friend_id = ?
+		`, user_id)
+
+	if err != nil {
+		log.Print(err)
+		return nil
+	}
+
+	for rows.Next() {
+		var f friend
+		if err := rows.Scan(&f.Id, &f.Username); err != nil {
+			log.Print(err)
+			return nil
+		}
+		friends_list = append(friends_list, f)
+	}
+
+	defer db.Close()
+	return friends_list
 }
