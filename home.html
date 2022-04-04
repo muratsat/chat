@@ -5,6 +5,53 @@
 <script type="text/javascript">
 // var msg = document.getElementById("msg");
 // var log = document.getElementById("log");
+var current_id;
+
+function httpGet(theUrl) {
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
+    xmlHttp.send( null );
+    return xmlHttp.response;
+}
+
+function httpPost(url, body) {
+    var r = new XMLHttpRequest();
+    r.open("POST", url, false)
+    r.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    r.send(JSON.stringify(body))
+    return r
+}
+
+function UpdateFriendsList(){
+    f = JSON.parse(httpGet('/friends'));
+    console.log(f);
+    console.log(f.length);
+
+    var friends_list = document.getElementById("friends-list")
+    friends_list.innerHTML = ''
+    for(i = 0; i < f.length; i++){
+        var item = document.createElement("div")
+        item.innerText = f[i]["username"]
+        friends_list.appendChild(item)
+    }
+}
+
+function addFriend(){
+    var serch = document.getElementById("find");
+    var name = serch.value;
+    var body = {"username": name}
+    var resp = document.getElementById("friendResponse")
+
+    r = httpPost('/friends/add', body)
+    if(r.status == 200){
+        UpdateFriendsList()
+        resp.innerText = 'request sent'
+    }
+    else{
+        resp.innerText = 'user not found'
+    }
+    serch.value = ''
+}
 
 function appendLog(item) {
     var log = document.getElementById("log");
@@ -57,6 +104,10 @@ body {
     height: 100%;
 }
 
+.item {
+    padding-left: 5px;
+}
+
 #log {
     background: white;
     margin: 0;
@@ -82,13 +133,16 @@ body {
 
 </style>
 </head>
-<body>
+<body onload="UpdateFriendsList()">
 
-<div class="sidebar">
-    <div class="item">item 1</div>
-    <div class="item">item 2</div>
-    <div class="item">item 3</div>
-    <div class="item">item 4</div>
+<div class="sidebar" id="friends">
+    <h2> Friends </h2>
+    <div class="item" id="friends-list"></div>
+
+    <h2> Add Friends </h2>
+    <input id="find" placeholder="friend's username">
+    <button onclick="addFriend()"> Send request </button>
+    <div id="friendResponse"></div>
 </div>
 
 <div class="main">
@@ -99,8 +153,6 @@ body {
         <input id="msg" placeholder="message">
     </div>
 </div>
-
-    <!-- <div id="log"></div> -->
 
 
 </body>
