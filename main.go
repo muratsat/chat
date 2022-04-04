@@ -8,53 +8,33 @@ import (
 	"time"
 )
 
-func serveHttp(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.URL)
-
-	switch r.URL.Path {
-	case "/":
-		home(w, r)
-		return
-
-	case "/register":
-		if r.Method == http.MethodGet {
-			http.ServeFile(w, r, "register.html")
-		}
-		if r.Method == http.MethodPost {
-			register(w, r)
-		}
-
-	case "/login":
-		if r.Method == http.MethodGet {
-			http.ServeFile(w, r, "login.html")
-		}
-		if r.Method == http.MethodPost {
-			login(w, r)
-		}
-
-	case "/friends":
-		if r.Method == http.MethodGet {
-			friends(w, r)
-		}
-
-	case "/friends/add":
-		if r.Method == http.MethodPost {
-			addFriend(w, r)
-		}
-
-	case "/messages":
-		if r.Method == http.MethodGet {
-			messages(w, r)
-		}
-
-	default:
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-}
+var hub = newHub()
 
 func main() {
-	http.HandleFunc("/", serveHttp)
+	go hub.run()
+
+	http.HandleFunc("/", home)
+	http.HandleFunc("/friends", friends)
+	http.HandleFunc("/friends/add", addFriend)
+	http.HandleFunc("/messages", messages)
+	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			http.ServeFile(w, r, "register.html")
+		} else {
+			register(w, r)
+		}
+	})
+	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			http.ServeFile(w, r, "login.html")
+		} else {
+			login(w, r)
+		}
+	})
+	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+		serveWs(hub, w, r)
+	})
+
 	err := http.ListenAndServe(":8080", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)

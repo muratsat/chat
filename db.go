@@ -153,13 +153,19 @@ func dbGetMessages(user_id int, friend_id int) []message {
 	defer db.Close()
 	var messages []message
 
+	if user_id == friend_id {
+		return messages
+	}
+
 	rows, err := db.Query(`
 		SELECT m.text, u.username, m.date
 		FROM message m
 		LEFT JOIN user u ON m.user_id = u.id
 		WHERE m.room_id = (
-		    SELECT  room_id FROM participants
-		    WHERE user_id = ? and EXISTS(SELECT * FROM participants WHERE user_id = ?))
+		    SELECT p1.room_id
+		    FROM participants p1
+		             LEFT JOIN participants p2 on p1.room_id = p2.room_id
+		    WHERE p1.user_id = ? and p2.user_id = ?)
 		ORDER BY date ;
 	`, user_id, friend_id)
 
@@ -177,8 +183,6 @@ func dbGetMessages(user_id int, friend_id int) []message {
 		}
 		messages = append(messages, m)
 	}
-
-	log.Print(user_id, messages)
 
 	return messages
 }

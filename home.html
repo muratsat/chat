@@ -5,13 +5,15 @@
 <script type="text/javascript">
 // var msg = document.getElementById("msg");
 // var log = document.getElementById("log");
-var current_id;
+var friend_id = 0;
+var friends = []
 
-function httpGet(theUrl) {
+function httpGet(theUrl, body = null) {
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
-    xmlHttp.send( null );
-    return xmlHttp.response;
+    xmlHttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xmlHttp.send( JSON.stringify(body) );
+    return xmlHttp;
 }
 
 function httpPost(url, body) {
@@ -22,17 +24,39 @@ function httpPost(url, body) {
     return r
 }
 
+function switchTo(Id){
+    friend_id = Id
+    var name = document.getElementById(`${Id}`).innerText
+    h = document.getElementById("header").innerText = name
+
+    var body = {"id": Id, "username": name}
+    var r = httpPost('/messages', body)
+    var msg_list = JSON.parse(r.response)
+
+    document.getElementById("log").innerHTML = ''
+    if(msg_list != null){
+        for(i = 0; i < msg_list.length; i++){
+            var item = document.createElement("div")
+            item.innerText = `<${msg_list[i]["username"]}> ${msg_list[i]["text"]}`
+            appendLog(item)
+        }
+    }
+}
+
 function UpdateFriendsList(){
-    f = JSON.parse(httpGet('/friends'));
-    console.log(f);
-    console.log(f.length);
+    f = JSON.parse(httpGet('/friends').response);
 
     var friends_list = document.getElementById("friends-list")
     friends_list.innerHTML = ''
-    for(i = 0; i < f.length; i++){
-        var item = document.createElement("div")
-        item.innerText = f[i]["username"]
-        friends_list.appendChild(item)
+    if(f != null){
+        friends = f;
+        for(i = 0; i < f.length; i++){
+            var item = document.createElement("button")
+            item.setAttribute("id", f[i]["id"])
+            item.setAttribute("onclick", `switchTo(${f[i]["id"]})`)
+            item.innerText = f[i]["username"]
+            friends_list.appendChild(item)
+        }
     }
 }
 
@@ -71,6 +95,57 @@ function sendMessage(){
     msg.value = '';
 }
 
+function appendLog(item) {
+    var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+    log.appendChild(item);
+    if (doScroll) {
+        log.scrollTop = log.scrollHeight - log.clientHeight;
+    }
+}
+
+var auth_token = document.cookie.replace('auth_token=', '')
+
+window.onload = function () {
+    UpdateFriendsList()
+    var conn;
+    var msg = document.getElementById("msg");
+    var log = document.getElementById("log");
+
+
+    document.getElementById("form").onsubmit = function () {
+        if (!conn) {
+            return false;
+        }
+        if (!msg.value) {
+            return false;
+        }
+        conn.send(msg.value);
+        msg.value = "";
+        return false;
+    };
+
+    if (window["WebSocket"]) {
+        conn = new WebSocket("ws://" + document.location.host + "/ws");
+        conn.onclose = function (evt) {
+            var item = document.createElement("div");
+            item.innerHTML = "<b>Connection closed.</b>";
+            appendLog(item);
+        };
+        conn.onmessage = function (evt) {
+            var messages = evt.data.split('\n');
+            for (var i = 0; i < messages.length; i++) {
+                var item = document.createElement("div");
+                item.innerText = messages[i];
+                appendLog(item);
+            }
+        };
+    } else {
+        var item = document.createElement("div");
+        item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
+        appendLog(item);
+    }
+};
+
 </script>
 <style type="text/css">
 html {
@@ -97,7 +172,7 @@ body {
 }
 
 .main {
-    background: pink;
+    background: rgb(45, 57, 122);
     position: absolute;
     left: 200px;
     right: 0;
@@ -108,7 +183,7 @@ body {
     padding-left: 5px;
 }
 
-#log {
+#messages {
     background: white;
     margin: 0;
     padding: 0.5em 0.5em 0.5em 0.5em;
@@ -133,11 +208,12 @@ body {
 
 </style>
 </head>
-<body onload="UpdateFriendsList()">
+<body >
 
 <div class="sidebar" id="friends">
     <h2> Friends </h2>
-    <div class="item" id="friends-list"></div>
+    <div class="item" id="friends-list">
+    </div>
 
     <h2> Add Friends </h2>
     <input id="find" placeholder="friend's username">
@@ -146,12 +222,16 @@ body {
 </div>
 
 <div class="main">
-    <div id="log"></div>
-    <div id="form">
-        <button onclick="sendMessage()"> Send </button>
-        <!-- <input type="text" id="msg" size="64" autofocus /> -->
-        <input id="msg" placeholder="message">
+    <div id="messages">
+        <h1 id="header">Choose friend</h1>
+        <div id="log">
+        </div>
     </div>
+
+    <form id="form">
+        <input type="submit" value="Send" />
+        <input type="text" id="msg" size="64" autofocus />
+    </form>
 </div>
 
 
