@@ -79,6 +79,7 @@ func register(w http.ResponseWriter, r *http.Request) {
 	log.Printf("%s %s", newAuth.Username, newAuth.Password)
 
 	if !dbAddUser(newAuth.Username, newAuth.Password) {
+		w.WriteHeader(http.StatusBadRequest)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode("such user already exists or invalid username")
 		return

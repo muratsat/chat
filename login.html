@@ -40,6 +40,9 @@ function send(){
 
     usr.value = '';
     pswd.value = '';
+
+    var p = document.getElementById("response");
+    p.innerHTML = 'invalid username or password'
 }
 
 </script>
@@ -61,6 +64,7 @@ function send(){
     </div>
 
     <p> <a href="/register"> register </a> </p>
+    <p id="response"></p>
 </body>
 
 </html>

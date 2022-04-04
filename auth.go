@@ -67,13 +67,15 @@ func GenerateToken(username string) (map[string]interface{}, error) {
 }
 
 func UpdateToken(username string) (map[string]interface{}, error) {
+	log.Println("updating token")
 	token, err := GenerateToken(username)
 	if err != nil {
 		return nil, err
 	}
 
 	db := OpendbConnection()
-	db.Query("UPDATE authentication_tokens SET generated_at = ?, expires_at = ?, auth_token = ? WHERE user_id = (SELECT id FROM user WHERE username = ?);", token["generated_at"], token["expires_at"], token["auth_token"], username)
+	_, err = db.Query("UPDATE authentication_tokens SET generated_at = ?, expires_at = ?, auth_token = ? WHERE user_id = (SELECT id FROM user WHERE username = ?);", token["generated_at"], token["expires_at"], token["auth_token"], username)
+	log.Println(err)
 
 	defer db.Close()
 	return token, nil

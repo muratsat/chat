@@ -178,7 +178,7 @@ func dbGetMessages(user_id int, friend_id int) []message {
 		messages = append(messages, m)
 	}
 
-	log.Print(messages)
+	log.Print(user_id, messages)
 
 	return messages
 }
