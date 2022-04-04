@@ -37,7 +37,7 @@ CREATE TABLE authentication_tokens (
     user_id INT,
     auth_token VARCHAR(255),
     generated_at DATETIME,
-    expires_ad DATETIME,
+    expires_at DATETIME,
     PRIMARY KEY (id)
 );
 
