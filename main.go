@@ -11,11 +11,7 @@ import (
 var hub = newHub()
 
 func main() {
-	// for i := 0; i < 30; i++ {
-	// 	dbSendMessage(1, fmt.Sprintf("Spam #%d", i), 2)
-	// }
-
-	// return
+	log.Print("Starting server...")
 	go hub.run()
 
 	http.HandleFunc("/", home)
@@ -57,7 +53,6 @@ func register(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	var newAuth auth
 	err := decoder.Decode(&newAuth)
-	log.Print(newAuth)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -72,7 +67,6 @@ func register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode("succesfully registered")
 }
 

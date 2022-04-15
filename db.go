@@ -14,6 +14,20 @@ import (
 var connection_string = os.Getenv("CONN_STRING")
 
 func OpendbConnection() *sql.DB {
+	DB_USERNAME := os.Getenv("DB_USERNAME")
+	DB_PASSWORD := os.Getenv("DB_PASSWORD")
+	DB_HOST := os.Getenv("DB_HOST")
+	DB_PORT := os.Getenv("DB_PORT")
+	DB_DB := os.Getenv("DB_DB")
+
+	connection_string := fmt.Sprintf(("%s:%s@tcp(%s:%s)/%s"),
+		DB_USERNAME,
+		DB_PASSWORD,
+		DB_HOST,
+		DB_PORT,
+		DB_DB,
+	)
+
 	db, err := sql.Open("mysql", connection_string)
 	if err != nil {
 		panic(err.Error())

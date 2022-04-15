@@ -1,3 +1,5 @@
+CREATE DATABASE vkdb
+use vkdb;
 CREATE TABLE user (
     id INT NOT NULL AUTO_INCREMENT,
     username VARCHAR(100) NOT NULL UNIQUE ,

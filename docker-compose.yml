@@ -1,0 +1,51 @@
+version: '3.3'
+services:
+  db:
+    image: mysql:8.0
+    cap_add:
+      - SYS_NICE
+    restart: always
+    environment:
+      - MYSQL_DATABASE=vkdb
+      - MYSQL_USER=root
+      - MYSQL_ROOT_PASSWORD=12qw!@QW
+    ports:
+      - '3306:3306'
+    volumes:
+      - db:/var/lib/mysql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+    
+  app:
+    restart: always
+    build: .
+    ports: 
+      - '8080:8080'
+    depends_on:
+      db:
+        condition: service_healthy
+
+    environment:
+      - DB_USERNAME=root
+      - DB_PASSWORD=12qw!@QW
+      - DB_DB=vkdb
+      - DB_HOST=db
+      - DB_PORT=3306
+    links:
+      - db
+    networks:
+      - mysql
+    volumes:
+      - .:/src
+
+volumes:
+  db:
+    driver: local
+networks:
+  mysql:
+    driver: bridge
