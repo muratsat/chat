@@ -2,10 +2,11 @@ package handlers
 
 import "net/http"
 
-func SetupHandlers() {
-	http.HandleFunc("/",
-		func(w http.ResponseWriter, r *http.Request) {
-			w.WriteHeader(http.StatusOK)
-		})
+type authRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
 
+func SetupHandlers() {
+	http.HandleFunc("/register", register)
 }

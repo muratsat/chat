@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/muratsat/chat/api/handlers"
+	"github.com/muratsat/chat/backend/api/handlers"
 )
 
 type App struct {

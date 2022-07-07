@@ -4,7 +4,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/muratsat/chat/api"
+	"github.com/muratsat/chat/backend/api"
 )
 
 func main() {
