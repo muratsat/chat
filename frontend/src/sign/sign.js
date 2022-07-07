@@ -6,8 +6,8 @@ import { useState } from 'react';
 // geting username and password
 // and sending it to the server
 function SignForm() {
-  const [username, setUsername] = useState('murat');
-  const [password, setPassword] = useState('qwerty');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
   async function sendData(data) {
     const response = await fetch("http://localhost:8081/register", {
