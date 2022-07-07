@@ -9,6 +9,7 @@ import (
 )
 
 func register(w http.ResponseWriter, r *http.Request) {
+	setupCORS(&w, r)
 	// marshal request body to struct
 	var request authRequest
 	err := json.NewDecoder(r.Body).Decode(&request)
@@ -27,8 +28,10 @@ func register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hash, _ := generatePasswordHash(request.Password)
+
 	// add user to database
-	err = db.AddUser(request.Username, request.Password)
+	err = db.AddUser(request.Username, hash)
 	if err != nil {
 		// return error message if user already exists
 		if err.Error() == "User already exists" {

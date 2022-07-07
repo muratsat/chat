@@ -1,7 +1,11 @@
+import SignForm from './sign/sign';
 
+// chat app component
 function App() {
   return (
-    <> Hello world </>
+    <div className="App">
+      <SignForm />
+    </div>
   );
 }
 
