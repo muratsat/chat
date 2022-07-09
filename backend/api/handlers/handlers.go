@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 	"os"
 )
@@ -30,4 +31,9 @@ func setupCORS(w *http.ResponseWriter, r *http.Request) {
 		(*w).WriteHeader(http.StatusOK)
 		return
 	}
+}
+
+func writeJSON(w *http.ResponseWriter, data interface{}) {
+	(*w).Header().Set("Content-Type", "application/json")
+	json.NewEncoder(*w).Encode(data)
 }
